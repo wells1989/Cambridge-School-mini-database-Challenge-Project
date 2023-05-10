@@ -2,39 +2,50 @@
 
 CREATE TABLE school (
   id integer PRIMARY KEY,
-  name varchar(20),
-  address varchar(50),
-  number integer
+  name varchar(20) NOT NULL,
+  address varchar(50) NOT NULL,
+  number integer NOT NULL,
+  unique (name, address, number)
 );
+
+ALTER TABLE school
+ADD CHECK CHECK(DATALENGTH(number)=9);
 
 CREATE TABLE teacher (
   id integer PRIMARY KEY,
-  name varchar(20),
-  address varchar(50),
-  contact integer
+  name varchar(20) NOT NULL,
+  address varchar(50) NOT NULL,
+  contact integer NOT NULL,
+  UNIQUE(name, address, contact)
   );
+
+ALTER TABLE teacher
+ADD CHECK CHECK(DATALENGTH(contact)=9);
  
  CREATE TABLE schools_teachers(
- 	school_id integer REFERENCES school(id),
-  teacher_id integer REFERENCES teacher(id),
+ 	FOREIGN KEY (school_id) integer REFERENCES school(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (teacher_id) integer REFERENCES teacher(id) ON DELETE CASCADE ON UPDATE CASCADE,
   PRIMARY KEY(school_id, teacher_id)
  );
  
  CREATE TABLE guardian(
  	id int PRIMARY KEY,
-  name varchar(20),
-  contact integer,
-  notes varchar(200)
+  name varchar(20) NOT NULL,
+  contact integer UNIQUE NOT NULL,
+  notes varchar(200),
  );
+
+ALTER TABLE guardian
+ADD CHECK CHECK(DATALENGTH(contact)=9);
  
  CREATE TABLE student(
 	id integer PRIMARY KEY,
-  name varchar(20),
+  name varchar(20) NOT NULL,
   date_of_enrollment date,
   notes varchar(200),
-  teacher_id integer REFERENCES teacher(id),
-  school_id integer REFERENCES school(id),
-  guardian_id integer REFERENCES guardian(id)
+  FOREIGN KEY (teacher_id) integer REFERENCES teacher(id)ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (school_id) integer REFERENCES school(id)ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (guardian_id) integer REFERENCES guardian(id) ON DELETE CASCADE ON UPDATE CASCADE
  );
  
  -- inserting data into tables
@@ -47,9 +58,9 @@ CREATE TABLE teacher (
  ;
  
  INSERT INTO teacher VALUES
- (1, 'Rob Davidson', 'Rua Lucinda Do Carmo 5, Lisbon, 1900-500', 555904923),
- (2, 'Sarah Jones', 'Avenida dos Estados Unidos 17a, Lisbon, 1795-850', 555904923),
- (3, 'Darren Wilkinson', 'Rua Cor de Rosa, Lisbon, 1566-800', 555904923)
+ (1, 'Rob_Davidson', 'Rua Lucinda Do Carmo 5, Lisbon, 1900-500', 555904923),
+ (2, 'Sarah_Jones', 'Avenida dos Estados Unidos 17a, Lisbon, 1795-850', 555904923),
+ (3, 'Darren_Wilkinson', 'Rua Cor de Rosa, Lisbon, 1566-800', 555904923)
  ;
 
  INSERT INTO student VALUES 
@@ -68,7 +79,7 @@ INSERT INTO guardian VALUES
 -- adjusting teacher table to add school id
 
 ALTER TABLE teacher
-ADD COLUMN school_id integer REFERENCES school(id);
+ADD COLUMN FOREIGN KEY (school_id) integer REFERENCES school(id)ON DELETE CASCADE ON UPDATE CASCADE;
 
 UPDATE teacher
 SET school_id = 1
@@ -93,7 +104,7 @@ WHERE id = 3;
  -- creating a new column in students to link the guardian, so the link can go both ways
 
  ALTER TABLE guardians
- ADD COLUMN student_id integer REFERENCES student(id);
+ ADD COLUMN FOREIGN KEY (student_id) integer REFERENCES student(id) ON DELETE CASCADE ON UPDATE CASCADE;
 
  UPDATE student
 SET guardian_id = 3
@@ -110,6 +121,30 @@ WHERE id = 3;
 UPDATE student
 SET guardian_id = 2
 WHERE id = 4;
+
+-- creating roles for admin, head_teachers and teachers
+
+SELECT current_user;
+
+CREATE ROLE admin WITH LOGIN SUPERUSER CREATEROLE CREATEDB;
+
+CREATE ROLE head_teachers WITH LOGIN;
+
+CREATE ROLE teachers WITH LOGIN;
+
+-- column / row level security
+
+GRANT SELECT (id, name, address, school_id) ON teacher to teachers;
+
+CREATE POLICY emp_rls_policy ON teacher FOR UPDATE 
+TO teachers USING (name=current_user);
+
+ALTER TABLE teacher ENABLE ROW LEVEL SECURITY;
+
+GRANT SELECT (id, student_id, name, notes) ON guardian to teachers;
+
+CREATE ROLE Rob_Davidson WITH LOGIN IN ROLE teachers;
+
 
 
 
